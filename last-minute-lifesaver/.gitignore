@@ -57,3 +57,6 @@ desktop.ini
 # ===========================
 *.tmp
 *.temp
+backend/serviceAccountKey.json
+serviceAccountKey.json
+last-minute-lifesaver/backend/serviceAccountKey.json
