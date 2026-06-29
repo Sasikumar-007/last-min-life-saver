@@ -19,32 +19,45 @@ function getUserId() {
 }
 
 /**
- * Helper: make a fetch call with standard error handling.
+ * Helper: make a fetch call with standard error handling and automatic retry for sleeping backends.
  */
-async function apiFetch(path, options = {}) {
+async function apiFetch(path, options = {}, retries = 5, delay = 3000) {
   const url = `${BASE_URL}${path}`
-  let res
-  try {
-    res = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
-    })
-  } catch (networkError) {
-    // Network-level failure: backend unreachable, CORS blocked, DNS fail, etc.
-    throw new Error(
-      `Cannot reach backend (${BASE_URL}). It may be sleeping — Render free-tier services spin down after inactivity. Please wait ~30s and try again.`
-    )
-  }
+  
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+        ...options,
+      })
 
-  if (!res.ok) {
-    const errorBody = await res.text()
-    throw new Error(`API error ${res.status}: ${errorBody}`)
-  }
+      if (!res.ok) {
+        const errorBody = await res.text()
+        throw new Error(`API error ${res.status}: ${errorBody}`)
+      }
 
-  return res.json()
+      return await res.json()
+    } catch (error) {
+      // If it's an API error (res.ok is false), don't retry, just propagate it
+      if (error.message.startsWith('API error')) {
+        throw error
+      }
+      
+      // If we have remaining retries, wait and try again
+      if (attempt < retries) {
+        console.warn(`Attempt ${attempt} to reach backend failed. Retrying in ${delay}ms...`, error)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      } else {
+        // Last attempt failed, throw detailed error
+        throw new Error(
+          `Cannot reach backend (${BASE_URL}) after ${retries} attempts. It may be sleeping or offline — Render free-tier services spin down after inactivity. Please refresh the page in 30 seconds.`
+        )
+      }
+    }
+  }
 }
 
 /**
