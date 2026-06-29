@@ -2,7 +2,7 @@
  * Thin wrapper around backend calls. Point BASE_URL at your deployed
  * Cloud Run URL once you deploy.
  */
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://lifesaver-backend-dsmv.onrender.com'
 
 /**
  * Helper: get the user_id from URL params or localStorage.
