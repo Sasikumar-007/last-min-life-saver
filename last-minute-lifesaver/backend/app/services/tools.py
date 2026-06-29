@@ -223,14 +223,18 @@ def reprioritize(new_order: list[str]) -> dict:
     cal_service = build("calendar", "v3", credentials=creds)
 
     # Fetch the latest plan
+    # Simple query without order_by to avoid composite index requirement.
     plans_ref = db.collection("plans")
     plan_query = (
         plans_ref
         .where("user_id", "==", user_id)
-        .order_by("generated_at", direction="DESCENDING")
-        .limit(1)
     )
     plan_docs = list(plan_query.stream())
+    # Sort by generated_at descending in Python, pick the latest
+    plan_docs.sort(
+        key=lambda d: d.to_dict().get("generated_at", ""),
+        reverse=True,
+    )
     if not plan_docs:
         return {"status": "no_plan", "message": "No plan found to reprioritize"}
 
@@ -297,14 +301,18 @@ def move_event(task_id: str, new_start: str, new_end: str) -> dict:
     cal_service = build("calendar", "v3", credentials=creds)
 
     # Update Firestore plan slot
+    # Simple query without order_by to avoid composite index requirement.
     plans_ref = db.collection("plans")
     plan_query = (
         plans_ref
         .where("user_id", "==", user_id)
-        .order_by("generated_at", direction="DESCENDING")
-        .limit(1)
     )
     plan_docs = list(plan_query.stream())
+    # Sort by generated_at descending in Python, pick the latest
+    plan_docs.sort(
+        key=lambda d: d.to_dict().get("generated_at", ""),
+        reverse=True,
+    )
     if not plan_docs:
         return {"status": "no_plan", "message": "No plan found"}
 

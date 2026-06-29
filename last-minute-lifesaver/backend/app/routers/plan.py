@@ -39,43 +39,52 @@ def get_today_plan(user_id: str = Query(default="demo_user")):
     Returns the most recently generated plan, augmented with task details
     for each slot so the frontend can render a rich timeline.
     """
-    plan_query = (
-        db.collection("plans")
-        .where("user_id", "==", user_id)
-        .order_by("generated_at", direction="DESCENDING")
-        .limit(1)
-    )
-    plan_docs = list(plan_query.stream())
+    try:
+        # Simple query without order_by to avoid needing a composite index.
+        # We sort in Python instead.
+        plan_query = (
+            db.collection("plans")
+            .where("user_id", "==", user_id)
+        )
+        plan_docs = list(plan_query.stream())
 
-    if not plan_docs:
-        return {"plan": None, "message": "No plan found. Generate one first."}
+        if not plan_docs:
+            return {"plan": None, "message": "No plan found. Generate one first."}
 
-    plan_data = plan_docs[0].to_dict()
+        # Sort by generated_at descending in Python, pick the latest
+        plan_docs.sort(
+            key=lambda d: d.to_dict().get("generated_at", ""),
+            reverse=True,
+        )
+        plan_data = plan_docs[0].to_dict()
 
-    # Enrich slots with task details for the frontend
-    enriched_slots = []
-    for slot in plan_data.get("slots", []):
-        task_id = slot.get("task_id", "")
-        task_doc = db.collection("tasks").document(task_id).get()
+        # Enrich slots with task details for the frontend
+        enriched_slots = []
+        for slot in plan_data.get("slots", []):
+            task_id = slot.get("task_id", "")
+            task_doc = db.collection("tasks").document(task_id).get()
 
-        slot_info = {
-            "task_id": task_id,
-            "start": slot.get("start", ""),
-            "end": slot.get("end", ""),
-        }
+            slot_info = {
+                "task_id": task_id,
+                "start": slot.get("start", ""),
+                "end": slot.get("end", ""),
+            }
 
-        if task_doc.exists:
-            task_data = task_doc.to_dict()
-            slot_info["title"] = task_data.get("title", "Unknown Task")
-            slot_info["status"] = task_data.get("status", "not_started")
-            slot_info["deadline"] = task_data.get("deadline", "")
-            slot_info["type"] = task_data.get("type", "other")
-            slot_info["effort_minutes"] = task_data.get("effort_minutes", 0)
-        else:
-            slot_info["title"] = "Unknown Task"
-            slot_info["status"] = "not_started"
+            if task_doc.exists:
+                task_data = task_doc.to_dict()
+                slot_info["title"] = task_data.get("title", "Unknown Task")
+                slot_info["status"] = task_data.get("status", "not_started")
+                slot_info["deadline"] = task_data.get("deadline", "")
+                slot_info["type"] = task_data.get("type", "other")
+                slot_info["effort_minutes"] = task_data.get("effort_minutes", 0)
+            else:
+                slot_info["title"] = "Unknown Task"
+                slot_info["status"] = "not_started"
 
-        enriched_slots.append(slot_info)
+            enriched_slots.append(slot_info)
 
-    plan_data["slots"] = enriched_slots
-    return {"plan": plan_data}
+        plan_data["slots"] = enriched_slots
+        return {"plan": plan_data}
+    except Exception as e:
+        print(f"Error fetching today's plan: {e}")
+        return {"plan": None, "message": f"Error loading plan: {str(e)}"}

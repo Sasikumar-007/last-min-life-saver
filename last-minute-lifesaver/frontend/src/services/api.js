@@ -23,13 +23,21 @@ function getUserId() {
  */
 async function apiFetch(path, options = {}) {
   const url = `${BASE_URL}${path}`
-  const res = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    ...options,
-  })
+  let res
+  try {
+    res = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    })
+  } catch (networkError) {
+    // Network-level failure: backend unreachable, CORS blocked, DNS fail, etc.
+    throw new Error(
+      `Cannot reach backend (${BASE_URL}). It may be sleeping — Render free-tier services spin down after inactivity. Please wait ~30s and try again.`
+    )
+  }
 
   if (!res.ok) {
     const errorBody = await res.text()

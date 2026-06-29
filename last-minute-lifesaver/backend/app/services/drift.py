@@ -56,13 +56,17 @@ def check_and_act(user_id: str) -> dict:
     now = datetime.now()
 
     # 1. Load latest plan for this user
+    # Simple query without order_by to avoid composite index requirement.
     plan_query = (
         db.collection("plans")
         .where("user_id", "==", user_id)
-        .order_by("generated_at", direction="DESCENDING")
-        .limit(1)
     )
     plan_docs = list(plan_query.stream())
+    # Sort by generated_at descending in Python, pick the latest
+    plan_docs.sort(
+        key=lambda d: d.to_dict().get("generated_at", ""),
+        reverse=True,
+    )
     if not plan_docs:
         return {
             "status": "no_plan",

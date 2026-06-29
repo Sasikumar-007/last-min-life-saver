@@ -52,15 +52,24 @@ def get_action_log(user_id: str = Query(default="demo_user")):
     Returns all logged actions sorted by timestamp (newest first).
     Judges inspect this to understand WHY the agent did what it did.
     """
-    log_query = (
-        db.collection("action_log")
-        .where("user_id", "==", user_id)
-        .order_by("timestamp", direction="DESCENDING")
-        .limit(50)
-    )
-    entries = []
-    for doc in log_query.stream():
-        entry = doc.to_dict()
-        entries.append(entry)
+    try:
+        # Simple query without order_by to avoid composite index requirement.
+        # Sort in Python instead.
+        log_query = (
+            db.collection("action_log")
+            .where("user_id", "==", user_id)
+        )
+        entries = []
+        for doc in log_query.stream():
+            entry = doc.to_dict()
+            entries.append(entry)
 
-    return {"action_log": entries}
+        # Sort by timestamp descending in Python
+        entries.sort(key=lambda e: e.get("timestamp", ""), reverse=True)
+        # Limit to 50 entries
+        entries = entries[:50]
+
+        return {"action_log": entries}
+    except Exception as e:
+        print(f"Error fetching action log: {e}")
+        return {"action_log": []}

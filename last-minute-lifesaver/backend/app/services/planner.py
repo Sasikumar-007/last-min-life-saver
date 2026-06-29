@@ -194,16 +194,18 @@ def generate_plan(user_id: str) -> dict:
     free_slots = _compute_free_slots(busy_ranges, days=7)
 
     # 2. Pull tasks (status != done) from Firestore
+    # Simple query without compound filters to avoid composite index requirement.
+    # Filter status in Python instead.
     tasks_query = (
         db.collection("tasks")
         .where("user_id", "==", user_id)
-        .where("status", "!=", "done")
     )
     tasks = []
     for doc in tasks_query.stream():
         task = doc.to_dict()
         task["id"] = doc.id
-        tasks.append(task)
+        if task.get("status") != "done":
+            tasks.append(task)
 
     # Pull fixed_events from Firestore
     fixed_events_query = db.collection("fixed_events").where("user_id", "==", user_id)

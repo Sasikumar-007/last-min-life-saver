@@ -68,16 +68,20 @@ def extract(req: ExtractRequest):
 @router.get("/")
 def list_tasks(user_id: str = Query(default="demo_user")):
     """Query Firestore for current user's tasks."""
-    tasks_query = db.collection("tasks").where("user_id", "==", user_id)
-    tasks = []
-    for doc in tasks_query.stream():
-        task = doc.to_dict()
-        tasks.append(task)
+    try:
+        tasks_query = db.collection("tasks").where("user_id", "==", user_id)
+        tasks = []
+        for doc in tasks_query.stream():
+            task = doc.to_dict()
+            tasks.append(task)
 
-    # Sort by deadline
-    tasks.sort(key=lambda t: t.get("deadline", ""))
+        # Sort by deadline
+        tasks.sort(key=lambda t: t.get("deadline", ""))
 
-    return {"tasks": tasks}
+        return {"tasks": tasks}
+    except Exception as e:
+        print(f"Error listing tasks: {e}")
+        return {"tasks": []}
 
 
 @router.patch("/{task_id}")
