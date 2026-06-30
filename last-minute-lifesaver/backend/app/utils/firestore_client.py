@@ -31,5 +31,9 @@ if not firebase_admin._apps:
     else:
         firebase_admin.initialize_app()
 
-db = firestore.client(database_id=os.environ.get("FIREBASE_DATABASE_ID", "sasikumar007"))
+from google.cloud import firestore as g_firestore
+app = firebase_admin.get_app()
+project_id = getattr(app, "project_id", None) or os.environ.get("GOOGLE_CLOUD_PROJECT")
+g_cred = app.credential.get_credential() if app.credential else None
+db = g_firestore.Client(project=project_id, database=os.environ.get("FIREBASE_DATABASE_ID", "sasikumar007"), credentials=g_cred)
 
