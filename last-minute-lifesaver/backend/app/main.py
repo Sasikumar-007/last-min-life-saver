@@ -16,6 +16,10 @@ Run locally with:
 Deploy target: Google Cloud Run (containerized via Dockerfile in this folder).
 """
 
+from dotenv import load_dotenv
+# Load environment variables from .env file for local development
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -23,12 +27,14 @@ from app.routers import tasks, plan, drift, auth
 
 app = FastAPI(title="Last-Minute Life Saver API")
 
-# TODO: restrict allow_origins to your deployed frontend URL before submission
+# CORS: allow_credentials must be False when allow_origins=["*"]
+# (browsers block wildcard + credentials together).
+# We use user_id as a query param, not cookies, so credentials=False is correct.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
