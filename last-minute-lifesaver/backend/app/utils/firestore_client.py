@@ -31,5 +31,5 @@ if not firebase_admin._apps:
     else:
         firebase_admin.initialize_app()
 
-db = firestore.client()
+db = firestore.client(database_id=os.environ.get("FIREBASE_DATABASE_ID", "sasikumar007"))
 
